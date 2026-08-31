@@ -33,6 +33,7 @@ const CUECAST_UA = 'Cuecast/1.0 (YouTube Live Scheduler)';
 const CUECAST_COST_INSERT = 50;
 const CUECAST_COST_UPDATE = 50;
 const CUECAST_COST_THUMB = 50;
+const CUECAST_DEFAULT_ICAL = 'https://calendar.google.com/calendar/ical/a832752ef1b4a490b08f611e0cf4a6df43986af604e1bf7965c614735fa867a6%40group.calendar.google.com/public/basic.ics';
 
 function main(array $argv): int
 {
@@ -42,7 +43,7 @@ function main(array $argv): int
         return 0;
     }
     if ($opt['ical'] === '' && $opt['file'] === '') {
-        fwrite(STDERR, "Missing --ical=URL or --file=PATH\n\n" . help_text());
+        fwrite(STDERR, "Missing --ical=URL or --file=PATH (or CUECAST_ICAL).\n\n" . help_text());
         return 2;
     }
 
@@ -54,6 +55,10 @@ function main(array $argv): int
     $parsed = parse_ics($ics);
     $state = ensure_quota(load_state($opt['state']), (int) $opt['quota_limit']);
     $token = $opt['dry_run'] ? null : resolve_token($opt);
+    if (!$opt['dry_run'] && $token === null && getenv('CUECAST_REQUIRE_YOUTUBE') === '1') {
+        fwrite(STDERR, "No YouTube credentials. Set GitHub Secrets YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN.\n");
+        return 3;
+    }
 
     $now = time();
     $inserted = 0;
@@ -246,6 +251,28 @@ function parse_args(array $argv): array
             $opt[$k] = $env;
         }
     }
+    $aliases = [
+        'client_id' => ['YOUTUBE_CLIENT_ID'],
+        'client_secret' => ['YOUTUBE_CLIENT_SECRET'],
+        'refresh_token' => ['YOUTUBE_REFRESH_TOKEN'],
+        'access_token' => ['YOUTUBE_ACCESS_TOKEN'],
+        'ical' => ['ICAL_URL'],
+    ];
+    foreach ($aliases as $k => $keys) {
+        if ($opt[$k] !== '') {
+            continue;
+        }
+        foreach ($keys as $name) {
+            $env = getenv($name);
+            if (is_string($env) && $env !== '') {
+                $opt[$k] = $env;
+                break;
+            }
+        }
+    }
+    if ($opt['ical'] === '' && $opt['file'] === '') {
+        $opt['ical'] = CUECAST_DEFAULT_ICAL;
+    }
     if (getenv('CUECAST_DRY_RUN') === '1') {
         $opt['dry_run'] = true;
     }
@@ -257,24 +284,22 @@ function help_text(): string
     return <<<TXT
 Cuecast — schedule YouTube Live from an iCal feed
 
-  php youtube-live-scheduler.php --ical=URL --log=cuecast-ops.csv --dry-run
-  php youtube-live-scheduler.php --file=board.ics --dry-run
-  php youtube-live-scheduler.php --ical=URL --refresh-token=TOKEN --client-id=ID --client-secret=SECRET
+  php youtube-live-scheduler.php --dry-run
+  php youtube-live-scheduler.php --log=cuecast-ops.csv
+
+Credentials are read from the environment (GitHub Actions secrets), never
+from the repo:
+
+  YOUTUBE_CLIENT_ID
+  YOUTUBE_CLIENT_SECRET
+  YOUTUBE_REFRESH_TOKEN
+  CUECAST_ICAL              optional; default is the public Live Shows feed
+
+The refresh token is exchanged at oauth2.googleapis.com/token for a short-lived
+access token, then used as Authorization: Bearer against YouTube Data API v3.
 
 New events are inserted. Changed events UPDATE the existing YouTube Live.
 Operations and quota units are appended to cuecast-ops.csv.
-
-Notes (calendar description):
-
-  # TITLE
-
-  DESCRIPTION
-
-  DATE TIME
-
-  DURATION AS HH:MM
-
-Thumbnail is the first image attached to the event.
 
 TXT;
 }

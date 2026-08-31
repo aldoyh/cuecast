@@ -5,6 +5,12 @@ import { formatCuecastCli } from "@/lib/cli";
 import { buildDemoIcs } from "@/lib/demo";
 import { toIcs } from "@/lib/ical";
 import { LIVE_SHOWS_ICAL } from "@/lib/calendar";
+import {
+  GITHUB_ACTIONS_URL,
+  GITHUB_SECRETS_URL,
+  PIPELINE,
+  YOUTUBE_SECRETS,
+} from "@/lib/github-secrets";
 import { applyScheduler, isDirty, opsToCsv, withRevisedNotes } from "@/lib/ops";
 import { useCuecast } from "@/lib/store";
 import { downloadText } from "@/lib/utils";
@@ -26,7 +32,7 @@ function CommandPage() {
   const ical = settings.icalUrl.trim() || LIVE_SHOWS_ICAL;
   const dryCmd = `php youtube-live-scheduler.php \\\n  --ical='${ical}' \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv \\\n  --dry-run`;
   const fileCmd = `php youtube-live-scheduler.php \\\n  --file=cuecast-board.ics \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv \\\n  --dry-run`;
-  const liveCmd = `php youtube-live-scheduler.php \\\n  --ical='${ical}' \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv \\\n  --client-id="$YOUTUBE_CLIENT_ID" \\\n  --client-secret="$YOUTUBE_CLIENT_SECRET" \\\n  --refresh-token="$YOUTUBE_REFRESH_TOKEN"`;
+  const liveCmd = `YOUTUBE_CLIENT_ID=… \\\nYOUTUBE_CLIENT_SECRET=… \\\nYOUTUBE_REFRESH_TOKEN=… \\\nphp youtube-live-scheduler.php \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv`;
 
   const upcoming = events.filter((e) => airStatus(e) === "upcoming");
   const dirty = events.filter((e) => isDirty(e, queued[e.uid]));
@@ -79,11 +85,83 @@ function CommandPage() {
         <p className="text-xs tracking-[0.2em] text-subtle uppercase">Single file</p>
         <h1 className="mt-2 font-display text-3xl font-medium tracking-tight">PHP command</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          One PHP file. Cron it. New calendar events become YouTube Lives. When notes, time, duration,
-          or the thumbnail change, it updates the existing broadcast. Every call is appended to a CSV
-          with quota units against the 10,000 daily limit.
+          One PHP file. GitHub Actions runs it every 30 minutes. YouTube credentials live in
+          repository secrets — never in the repo, never on the command line. The runner injects them
+          as environment variables; PHP exchanges the refresh token for a Bearer token and talks to
+          YouTube.
         </p>
       </header>
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs tracking-[0.2em] text-subtle uppercase">Vault</p>
+            <h2 className="mt-1 font-display text-lg font-medium">GitHub Secrets → YouTube</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <a href={GITHUB_SECRETS_URL} target="_blank" rel="noreferrer">
+                Open secrets
+              </a>
+            </Button>
+            <Button asChild variant="secondary">
+              <a href={GITHUB_ACTIONS_URL} target="_blank" rel="noreferrer">
+                Open Actions
+              </a>
+            </Button>
+          </div>
+        </div>
+        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {PIPELINE.map((step) => (
+            <li
+              key={step.n}
+              className="rounded-xl bg-surface px-4 py-4 shadow-[var(--shadow-border)]"
+            >
+              <p className="font-mono text-[11px] tracking-[0.18em] text-subtle">{step.n}</p>
+              <p className="mt-2 font-display text-base font-medium">{step.title}</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted">{step.body}</p>
+            </li>
+          ))}
+        </ol>
+        <div className="overflow-x-auto rounded-xl bg-surface shadow-[var(--shadow-border)]">
+          <table className="w-full min-w-[32rem] text-left text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs tracking-[0.14em] text-subtle uppercase">
+                <th className="px-4 py-3 font-medium">Secret</th>
+                <th className="px-4 py-3 font-medium">Required</th>
+                <th className="px-4 py-3 font-medium">What PHP does with it</th>
+              </tr>
+            </thead>
+            <tbody>
+              {YOUTUBE_SECRETS.map((secret) => (
+                <tr key={secret.name} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      className="font-mono text-xs text-fg underline decoration-border-strong underline-offset-4"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(secret.name);
+                        toast(`${secret.name} copied`);
+                      }}
+                    >
+                      {secret.name}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-muted">{secret.required ? "Yes" : "No"}</td>
+                  <td className="px-4 py-3 text-muted">{secret.usedFor}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-sm leading-relaxed text-muted">
+          GitHub encrypts each value at rest. At run time the workflow maps{" "}
+          <span className="font-mono text-xs">${"{{ secrets.YOUTUBE_REFRESH_TOKEN }}"}</span> into{" "}
+          <span className="font-mono text-xs">YOUTUBE_REFRESH_TOKEN</span>. PHP never sees the
+          secret name — only the env var. The access token is minted, used, and discarded. Logs
+          never print the values; GitHub redacts them if they leak into stdout.
+        </p>
+      </section>
 
       <div className="flex flex-wrap gap-2">
         <Button asChild>
@@ -151,12 +229,9 @@ function CommandPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-display text-lg font-medium">Go live</h2>
+        <h2 className="font-display text-lg font-medium">Go live (local env, no flags)</h2>
         <p className="text-sm text-muted">
-          Create an OAuth client in Google Cloud with the YouTube Data API v3, then a refresh token
-          with the <span className="font-mono text-xs">youtube</span> scope. The command inserts new
-          lives, updates changed ones, uploads thumbnails, and appends{" "}
-          <span className="font-mono text-xs">cuecast-ops.csv</span>.
+          Same names as the GitHub secrets. Do not pass tokens as <span className="font-mono text-xs">--refresh-token</span> — they show up in process lists.
         </p>
         <pre className="overflow-x-auto rounded-lg bg-elevated p-4 font-mono text-xs leading-relaxed text-fg shadow-[var(--shadow-border)]">
           {liveCmd}
@@ -164,13 +239,20 @@ function CommandPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-display text-lg font-medium">Cron</h2>
+        <h2 className="font-display text-lg font-medium">Actions (every 30 minutes)</h2>
         <pre className="overflow-x-auto rounded-lg bg-elevated p-4 font-mono text-xs leading-relaxed text-fg shadow-[var(--shadow-border)]">
-          {`*/10 * * * * php /opt/cuecast/youtube-live-scheduler.php --ical='${ical}' --privacy=${settings.privacy} --refresh-token=… --client-id=… --client-secret=… --state=/var/lib/cuecast/state.json --log=/var/lib/cuecast/ops.csv >> /var/log/cuecast.log 2>&1`}
+{`env:
+  YOUTUBE_CLIENT_ID: \${{ secrets.YOUTUBE_CLIENT_ID }}
+  YOUTUBE_CLIENT_SECRET: \${{ secrets.YOUTUBE_CLIENT_SECRET }}
+  YOUTUBE_REFRESH_TOKEN: \${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+  CUECAST_ICAL: \${{ secrets.CUECAST_ICAL }}
+  CUECAST_REQUIRE_YOUTUBE: "1"
+run: php public/youtube-live-scheduler.php --log=cuecast-ops.csv`}
         </pre>
         <p className="text-xs text-subtle">
-          Fingerprints of title, description, start, duration, and thumbnail are stored in the state
-          file. A later calendar edit issues liveBroadcasts.update instead of skipping.
+          Workflow file: <span className="font-mono">.github/workflows/cuecast.yml</span>. State is
+          cached between runs so a later calendar edit issues liveBroadcasts.update instead of a
+          second insert.
         </p>
       </section>
 

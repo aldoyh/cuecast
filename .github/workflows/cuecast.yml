@@ -1,0 +1,82 @@
+# Cuecast — Live Shows → YouTube
+#
+# Secrets never appear in this file. GitHub injects them as env vars at run
+# time. PHP reads YOUTUBE_* / CUECAST_* from the environment, exchanges the
+# refresh token for a short-lived access token, then calls YouTube.
+#
+# Add these under Settings → Secrets and variables → Actions:
+#   YOUTUBE_CLIENT_ID
+#   YOUTUBE_CLIENT_SECRET
+#   YOUTUBE_REFRESH_TOKEN
+#   CUECAST_ICAL              (optional — private feed; public Live Shows is the default)
+
+name: Cuecast
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Parse the calendar only — do not call YouTube
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cuecast-youtube
+  cancel-in-progress: false
+
+jobs:
+  schedule:
+    name: Sync Live Shows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+
+      - name: Restore scheduler state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cuecast.json
+            cuecast-ops.csv
+          key: cuecast-state-${{ github.run_id }}
+          restore-keys: |
+            cuecast-state-
+
+      - name: Schedule YouTube Live
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          CUECAST_ICAL: ${{ secrets.CUECAST_ICAL }}
+          CUECAST_PRIVACY: unlisted
+          CUECAST_REQUIRE_YOUTUBE: ${{ inputs.dry_run && '0' || '1' }}
+          CUECAST_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: php public/youtube-live-scheduler.php --state=.cuecast.json --log=cuecast-ops.csv
+
+      - name: Save scheduler state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .cuecast.json
+            cuecast-ops.csv
+          key: cuecast-state-${{ github.run_id }}
+
+      - name: Upload operations CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuecast-ops
+          path: cuecast-ops.csv
+          if-no-files-found: ignore
