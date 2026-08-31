@@ -19,6 +19,7 @@ export type RawCalendarEvent = {
   attachments: Attachment[];
   calendarName: string;
   rrule?: string | null;
+  allDay?: boolean;
 };
 
 export type NotesParse = {
@@ -29,7 +30,7 @@ export type NotesParse = {
   warnings: string[];
 };
 
-export type AirStatus = "live" | "upcoming" | "aired";
+export type AirStatus = "live" | "upcoming" | "aired" | "all_day";
 
 export type QueueStatus = "idle" | "queued" | "published";
 
@@ -72,6 +73,7 @@ export type LiveEvent = {
   calendarName: string;
   fingerprint: string;
   youtube: YouTubeBroadcastPayload;
+  allDay?: boolean;
 };
 
 export type SyncResult = {

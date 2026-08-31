@@ -98,6 +98,12 @@ function parseIcalDate(prop: IcalProp | undefined, tz: string): string | null {
   return zonedLocalToUtc(iso, tzid);
 }
 
+function isDateOnly(prop: IcalProp | undefined): boolean {
+  if (!prop) return false;
+  const raw = prop.value.trim();
+  return (prop.params.VALUE ?? "").toUpperCase() === "DATE" || /^\d{8}$/.test(raw);
+}
+
 function weekdayInTz(ms: number, tz: string): number {
   const label = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(new Date(ms));
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(label);
@@ -200,12 +206,14 @@ function collectEvent(props: IcalProp[], calendarName: string, tz: string): RawC
   if (!uid) return null;
   const summary = unescapeIcalText(get("SUMMARY")?.value ?? "").trim();
   const description = unescapeIcalText(get("DESCRIPTION")?.value ?? "");
-  const start = parseIcalDate(get("DTSTART"), tz);
+  const startProp = get("DTSTART");
+  const start = parseIcalDate(startProp, tz);
   if (!start) return null;
   const end = parseIcalDate(get("DTEND"), tz);
   const durationIcal = get("DURATION")?.value ?? null;
   const location = unescapeIcalText(get("LOCATION")?.value ?? "").trim() || null;
   const rrule = get("RRULE")?.value ?? null;
+  const allDay = isDateOnly(startProp);
 
   const attachments: Attachment[] = getAll("ATTACH").map((p) => ({
     url: p.value.trim(),
@@ -224,6 +232,7 @@ function collectEvent(props: IcalProp[], calendarName: string, tz: string): RawC
     attachments,
     calendarName,
     rrule,
+    allDay,
   };
 }
 

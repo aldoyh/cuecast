@@ -11,6 +11,13 @@ export function LiveBadge({ status, className }: { status: AirStatus; className?
       </Badge>
     );
   }
+  if (status === "all_day") {
+    return (
+      <Badge variant="outline" className={className}>
+        All day
+      </Badge>
+    );
+  }
   if (status === "aired") {
     return (
       <Badge variant="outline" className={className}>

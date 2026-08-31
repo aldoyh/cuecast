@@ -63,6 +63,7 @@ export function mapGoogleEvent(
     location: event.location ?? null,
     attachments,
     calendarName,
+    allDay: Boolean(event.start?.date && !event.start?.dateTime),
   };
 }
 

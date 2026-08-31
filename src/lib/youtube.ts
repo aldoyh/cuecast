@@ -67,9 +67,18 @@ function truncate(text: string, max: number): string {
   return `${t.slice(0, max - 1).trimEnd()}…`;
 }
 
-export function airStatus(event: Pick<LiveEvent, "startAt" | "endAt">, now = Date.now()): AirStatus {
+export function airStatus(
+  event: Pick<LiveEvent, "startAt" | "endAt"> & { allDay?: boolean },
+  now = Date.now(),
+): AirStatus {
   const start = new Date(event.startAt).getTime();
   const end = new Date(event.endAt).getTime();
+  const allDay = event.allDay || end - start >= 12 * 60 * 60 * 1000;
+  if (allDay) {
+    if (now >= end) return "aired";
+    if (now >= start) return "all_day";
+    return "upcoming";
+  }
   if (now >= start && now < end) return "live";
   if (now >= end) return "aired";
   return "upcoming";
@@ -150,6 +159,11 @@ export function compileLiveEvent(
 
   const startIso = new Date(startAt).toISOString();
   const endIso = new Date(endAt).toISOString();
+  const allDay =
+    Boolean(raw.allDay) ||
+    durationMinutes >= 12 * 60 ||
+    (!notes.dateTime && !notes.duration && durationMinutes >= 12 * 60);
+  if (allDay) warnings.push("All-day calendar mark — not a timed live.");
   const youtube = buildPayload({ title, description, startAt: startIso, endAt: endIso }, privacy);
 
   return {
@@ -179,6 +193,7 @@ export function compileLiveEvent(
       privacy,
     }),
     youtube,
+    allDay,
   };
 }
 
@@ -194,6 +209,7 @@ export function liveEventToRaw(event: LiveEvent): RawCalendarEvent {
     attachments: event.attachments,
     calendarName: event.calendarName,
     rrule: null,
+    allDay: event.allDay,
   };
 }
 

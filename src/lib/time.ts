@@ -48,6 +48,7 @@ export function formatDurationHuman(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   const hours = h ?? 0;
   const minutes = m ?? 0;
+  if (hours >= 12) return "All day";
   if (hours && minutes) return `${hours}h ${minutes}m`;
   if (hours) return `${hours}h`;
   return `${minutes}m`;

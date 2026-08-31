@@ -104,7 +104,7 @@ export function EventDetail({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={status === "aired" && !dirty}
+              disabled={(status === "aired" || status === "all_day") && !dirty}
               onClick={() => {
                 if (queued && !dirty) unqueueEvent(event.uid);
                 else {

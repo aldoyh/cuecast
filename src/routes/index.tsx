@@ -37,8 +37,14 @@ function BoardPage() {
     [events, hero],
   );
   const selected = events.find((e) => e.uid === selectedUid) ?? null;
-  const upcoming = events.filter((e) => airStatus(e, now) !== "aired").length;
-  const hours = events.reduce((sum, e) => sum + e.durationMinutes, 0) / 60;
+  const upcoming = events.filter((e) => {
+    const status = airStatus(e, now);
+    return status === "upcoming" || status === "live";
+  }).length;
+  const hours =
+    events
+      .filter((e) => !e.allDay && airStatus(e, now) !== "aired")
+      .reduce((sum, e) => sum + e.durationMinutes, 0) / 60;
   const dirtyCount = events.filter((e) => isDirty(e, queued[e.uid])).length;
 
   return (
@@ -142,11 +148,12 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function pickHero(events: LiveEvent[], now: number): LiveEvent | null {
-  const live = events.find((e) => airStatus(e, now) === "live");
+  const timed = events.filter((e) => airStatus(e, now) !== "all_day");
+  const live = timed.find((e) => airStatus(e, now) === "live");
   if (live) return live;
-  const upcoming = events.find((e) => airStatus(e, now) === "upcoming");
+  const upcoming = timed.find((e) => airStatus(e, now) === "upcoming");
   if (upcoming) return upcoming;
-  return events[events.length - 1] ?? null;
+  return timed[timed.length - 1] ?? events[events.length - 1] ?? null;
 }
 
 function sourceLabel(source: "demo" | "ical" | "google") {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { composeNotes, parseNotes, stripHtml } from "./notes.ts";
 import { parseIcs, toIcs } from "./ical.ts";
-import { compileLiveEvent, firstThumbnail, liveEventToRaw } from "./youtube.ts";
+import { airStatus, compileLiveEvent, firstThumbnail, liveEventToRaw } from "./youtube.ts";
 import { formatCuecastCli } from "./cli.ts";
 import {
   applyScheduler,
@@ -166,6 +166,26 @@ describe("iCal → live event", () => {
     assert.equal(live.thumbnailUrl, "/thumbs/kharj-mustatil.jpg");
     const morning = compileLiveEvent(breakfast!, "ical", "unlisted");
     assert.equal(morning.thumbnailUrl, "/thumbs/breakfast-show.jpg");
+  });
+
+  it("does not treat an all-day DATE event as on-air", () => {
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "X-WR-TIMEZONE:Asia/Qatar",
+      "BEGIN:VEVENT",
+      "DTSTART;VALUE=DATE:20260831",
+      "DTEND;VALUE=DATE:20260901",
+      "UID:drs@google.com",
+      "SUMMARY:DRS مع يونس العيد",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const now = Date.parse("2026-08-31T20:27:00Z");
+    const { events } = parseIcs(ics, now);
+    const live = compileLiveEvent(events[0]!, "ical", "unlisted");
+    assert.equal(live.allDay, true);
+    assert.equal(airStatus(live, now), "all_day");
   });
 });
 

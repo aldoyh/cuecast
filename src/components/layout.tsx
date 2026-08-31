@@ -66,13 +66,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5">
-      <span className="flex size-6 items-center justify-center rounded-sm bg-accent" aria-hidden>
-        <span className="size-2 rounded-[1px] bg-accent-fg" />
-      </span>
+      <img
+        src="/brand/channel.jpg"
+        alt="Radio Bahrain"
+        className="size-7 rounded-sm object-cover outline outline-1 -outline-offset-1 outline-fg/15"
+      />
       <span className="font-display text-lg font-semibold tracking-tight">Cuecast</span>
       {!compact && (
         <span className="ml-1 hidden text-[10px] tracking-[0.18em] text-subtle uppercase lg:inline">
-          Live desk
+          Radio Bahrain
         </span>
       )}
     </Link>

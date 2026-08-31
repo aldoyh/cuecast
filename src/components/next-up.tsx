@@ -28,7 +28,7 @@ export function NextUp({
         ? formatClock(Math.max(0, seconds))
         : "00:00:00";
   const caption =
-    status === "live" ? "On air" : status === "upcoming" ? "Next on the board" : "Last out";
+    status === "live" ? "On air" : status === "all_day" ? "All-day mark" : status === "upcoming" ? "Next on the board" : "Last out";
 
   return (
     <section className="stagger-in overflow-hidden rounded-xl bg-surface shadow-[var(--shadow-border)]">
@@ -56,7 +56,7 @@ export function NextUp({
             </p>
             <p className="mt-2 text-sm text-muted">{formatWhenLong(event.startAt)}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button onClick={onQueue} disabled={status === "aired" || (queued && !changed)}>
+              <Button onClick={onQueue} disabled={status === "aired" || status === "all_day" || (queued && !changed)}>
                 {changed ? "Stage YouTube update" : queued ? "Queued" : "Queue to YouTube"}
               </Button>
               <Button variant="secondary" onClick={onOpen}>
