@@ -33,16 +33,18 @@ Credentials never live in this repo. Add them at
 | `YOUTUBE_CLIENT_ID` | yes | OAuth client |
 | `YOUTUBE_CLIENT_SECRET` | yes | OAuth client |
 | `YOUTUBE_REFRESH_TOKEN` | yes | Offline `youtube` scope. Exchanged for a short-lived access token at run time |
-| `CUECAST_ICAL` | no | Private iCal URL. Empty = public Live Shows feed |
 
-`.github/workflows/cuecast.yml` maps those secrets into environment variables:
+The **calendar URL is not a secret**. It comes from the Feed page, then
+`cuecast.config.json`, then `--ical`. GitHub Secrets never override that address.
+
+`.github/workflows/cuecast.yml` maps only YouTube secrets into the environment:
 
 ```yaml
 env:
   YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
   YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
   YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-  CUECAST_ICAL: ${{ secrets.CUECAST_ICAL }}
+run: php public/youtube-live-scheduler.php --config=cuecast.config.json
 ```
 
 PHP reads the env vars (never CLI flags in CI), POSTs the refresh token to

@@ -1,14 +1,8 @@
 # Cuecast — Live Shows → YouTube
 #
-# Secrets never appear in this file. GitHub injects them as env vars at run
-# time. PHP reads YOUTUBE_* / CUECAST_* from the environment, exchanges the
-# refresh token for a short-lived access token, then calls YouTube.
-#
-# Add these under Settings → Secrets and variables → Actions:
-#   YOUTUBE_CLIENT_ID
-#   YOUTUBE_CLIENT_SECRET
-#   YOUTUBE_REFRESH_TOKEN
-#   CUECAST_ICAL              (optional — private feed; public Live Shows is the default)
+# YouTube credentials come from GitHub Secrets (YOUTUBE_* only).
+# The calendar URL does not. It is cuecast.config.json — the same address
+# the Feed page uses. Secrets never override the feed.
 
 name: Cuecast
 
@@ -58,11 +52,10 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-          CUECAST_ICAL: ${{ secrets.CUECAST_ICAL }}
           CUECAST_PRIVACY: unlisted
           CUECAST_REQUIRE_YOUTUBE: ${{ inputs.dry_run && '0' || '1' }}
           CUECAST_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
-        run: php public/youtube-live-scheduler.php --state=.cuecast.json --log=cuecast-ops.csv
+        run: php public/youtube-live-scheduler.php --config=cuecast.config.json --state=.cuecast.json --log=cuecast-ops.csv
 
       - name: Save scheduler state
         if: always()

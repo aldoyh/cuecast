@@ -151,7 +151,7 @@ function pickHero(events: LiveEvent[], now: number): LiveEvent | null {
 
 function sourceLabel(source: "demo" | "ical" | "google") {
   if (source === "google") return "Google Calendar";
-  if (source === "ical") return "Live Shows · Asia/Qatar";
+  if (source === "ical") return "iCal feed";
   return "Studio demo";
 }
 

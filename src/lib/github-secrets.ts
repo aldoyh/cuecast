@@ -30,12 +30,6 @@ export const YOUTUBE_SECRETS: SecretSpec[] = [
     required: true,
     usedFor: "Offline YouTube scope. Exchanged for a short-lived Bearer token at run time",
   },
-  {
-    name: "CUECAST_ICAL",
-    env: ["CUECAST_ICAL", "ICAL_URL"],
-    required: false,
-    usedFor: "Private iCal URL. Leave empty to use the public Live Shows feed",
-  },
 ];
 
 export const PIPELINE = [

@@ -42,9 +42,8 @@ function FeedPage() {
         <p className="text-xs tracking-[0.2em] text-subtle uppercase">Source</p>
         <h1 className="mt-2 font-display text-3xl font-medium tracking-tight">Calendar feed</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Cuecast watches the Live Shows calendar in Asia/Qatar. Weekly programmes expand to
-          upcoming airings. Cover stills are matched to each show; an attached image still wins
-          when the event has one.
+          This page is the calendar Cuecast uses. YouTube GitHub secrets never replace this URL —
+          they only mint the Bearer token. Paste any iCal address, or restore Live Shows.
         </p>
       </header>
 
@@ -71,7 +70,7 @@ function FeedPage() {
       >
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="ical" className="flex-1 sm:flex-none">
-            Live Shows
+            iCal
           </TabsTrigger>
           <TabsTrigger value="demo" className="flex-1 sm:flex-none">
             Demo
@@ -92,8 +91,9 @@ function FeedPage() {
               autoComplete="off"
             />
             <p className="text-xs leading-relaxed text-subtle">
-              Default is the public Live Shows feed (البرامج المباشرة), timezone Asia/Qatar. Swap in
-              another secret .ics if you need a private calendar.
+              Whatever you save here is what the board, the PHP command, and{" "}
+              <span className="font-mono">cuecast.config.json</span> use. Secrets cannot override
+              it.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -115,6 +115,24 @@ function FeedPage() {
               }}
             >
               Use Live Shows
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const body = JSON.stringify(
+                  {
+                    icalUrl: settings.icalUrl.trim() || LIVE_SHOWS_ICAL,
+                    privacy: settings.privacy,
+                    timezone: "Asia/Qatar",
+                  },
+                  null,
+                  2,
+                );
+                downloadText("cuecast.config.json", body + "\n", "application/json");
+                toast("Feed config downloaded — commit it so Actions uses this URL");
+              }}
+            >
+              Download feed config
             </Button>
           </div>
         </TabsContent>

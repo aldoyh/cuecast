@@ -206,6 +206,7 @@ function parse_args(array $argv): array
         'refresh_token' => '',
         'client_id' => '',
         'client_secret' => '',
+        'config' => 'cuecast.config.json',
         'dry_run' => false,
         'force' => false,
         'verbose' => false,
@@ -239,13 +240,18 @@ function parse_args(array $argv): array
             'refresh_token' => '--refresh-token=',
             'client_id' => '--client-id=',
             'client_secret' => '--client-secret=',
+            'config' => '--config=',
         ] as $key => $prefix) {
             if (str_starts_with($arg, $prefix)) {
                 $opt[$key] = substr($arg, strlen($prefix));
             }
         }
     }
-    foreach (['ical', 'file', 'privacy', 'state', 'log', 'quota_limit', 'access_token', 'refresh_token', 'client_id', 'client_secret'] as $k) {
+    $cfg = load_cuecast_config($opt['config']);
+    if ($opt['ical'] === '' && $opt['file'] === '' && ($cfg['icalUrl'] ?? '') !== '') {
+        $opt['ical'] = (string) $cfg['icalUrl'];
+    }
+    foreach (['file', 'privacy', 'state', 'log', 'quota_limit', 'access_token', 'refresh_token', 'client_id', 'client_secret'] as $k) {
         $env = getenv('CUECAST_' . strtoupper($k));
         if ($opt[$k] === '' && is_string($env) && $env !== '') {
             $opt[$k] = $env;
@@ -256,7 +262,6 @@ function parse_args(array $argv): array
         'client_secret' => ['YOUTUBE_CLIENT_SECRET'],
         'refresh_token' => ['YOUTUBE_REFRESH_TOKEN'],
         'access_token' => ['YOUTUBE_ACCESS_TOKEN'],
-        'ical' => ['ICAL_URL'],
     ];
     foreach ($aliases as $k => $keys) {
         if ($opt[$k] !== '') {
@@ -279,6 +284,19 @@ function parse_args(array $argv): array
     return $opt;
 }
 
+function load_cuecast_config(string $path): array
+{
+    if ($path === '' || !is_readable($path)) {
+        return [];
+    }
+    $raw = file_get_contents($path);
+    if (!is_string($raw) || $raw === '') {
+        return [];
+    }
+    $json = json_decode($raw, true);
+    return is_array($json) ? $json : [];
+}
+
 function help_text(): string
 {
     return <<<TXT
@@ -293,7 +311,10 @@ from the repo:
   YOUTUBE_CLIENT_ID
   YOUTUBE_CLIENT_SECRET
   YOUTUBE_REFRESH_TOKEN
-  CUECAST_ICAL              optional; default is the public Live Shows feed
+
+The calendar URL is NOT a secret. It comes from --ical, then cuecast.config.json
+(the Feed page address), then the public Live Shows feed. GitHub Secrets never
+override the feed.
 
 The refresh token is exchanged at oauth2.googleapis.com/token for a short-lived
 access token, then used as Authorization: Bearer against YouTube Data API v3.

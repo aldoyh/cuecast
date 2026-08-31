@@ -29,10 +29,10 @@ function CommandPage() {
   const calendarName = useCuecast((s) => s.calendarName);
   const applyRun = useCuecast((s) => s.applyRun);
   const reviseEvent = useCuecast((s) => s.reviseEvent);
-  const ical = settings.icalUrl.trim() || LIVE_SHOWS_ICAL;
-  const dryCmd = `php youtube-live-scheduler.php \\\n  --ical='${ical}' \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv \\\n  --dry-run`;
+  const ical = settings.icalUrl.trim();
+  const dryCmd = `php youtube-live-scheduler.php \\\n  --ical='${ical || LIVE_SHOWS_ICAL}' \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv \\\n  --dry-run`;
   const fileCmd = `php youtube-live-scheduler.php \\\n  --file=cuecast-board.ics \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv \\\n  --dry-run`;
-  const liveCmd = `YOUTUBE_CLIENT_ID=… \\\nYOUTUBE_CLIENT_SECRET=… \\\nYOUTUBE_REFRESH_TOKEN=… \\\nphp youtube-live-scheduler.php \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv`;
+  const liveCmd = `YOUTUBE_CLIENT_ID=… \\\nYOUTUBE_CLIENT_SECRET=… \\\nYOUTUBE_REFRESH_TOKEN=… \\\nphp youtube-live-scheduler.php \\\n  --ical='${ical || LIVE_SHOWS_ICAL}' \\\n  --privacy=${settings.privacy} \\\n  --log=cuecast-ops.csv`;
 
   const upcoming = events.filter((e) => airStatus(e) === "upcoming");
   const dirty = events.filter((e) => isDirty(e, queued[e.uid]));
@@ -155,11 +155,11 @@ function CommandPage() {
           </table>
         </div>
         <p className="text-sm leading-relaxed text-muted">
-          GitHub encrypts each value at rest. At run time the workflow maps{" "}
+          GitHub encrypts each YouTube value at rest. At run time the workflow maps{" "}
           <span className="font-mono text-xs">${"{{ secrets.YOUTUBE_REFRESH_TOKEN }}"}</span> into{" "}
-          <span className="font-mono text-xs">YOUTUBE_REFRESH_TOKEN</span>. PHP never sees the
-          secret name — only the env var. The access token is minted, used, and discarded. Logs
-          never print the values; GitHub redacts them if they leak into stdout.
+          <span className="font-mono text-xs">YOUTUBE_REFRESH_TOKEN</span>. The calendar URL is
+          taken from the Feed page (<span className="font-mono text-xs">--ical</span> /{" "}
+          <span className="font-mono text-xs">cuecast.config.json</span>), never from a secret.
         </p>
       </section>
 
@@ -245,9 +245,7 @@ function CommandPage() {
   YOUTUBE_CLIENT_ID: \${{ secrets.YOUTUBE_CLIENT_ID }}
   YOUTUBE_CLIENT_SECRET: \${{ secrets.YOUTUBE_CLIENT_SECRET }}
   YOUTUBE_REFRESH_TOKEN: \${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-  CUECAST_ICAL: \${{ secrets.CUECAST_ICAL }}
-  CUECAST_REQUIRE_YOUTUBE: "1"
-run: php public/youtube-live-scheduler.php --log=cuecast-ops.csv`}
+run: php public/youtube-live-scheduler.php --config=cuecast.config.json --log=cuecast-ops.csv`}
         </pre>
         <p className="text-xs text-subtle">
           Workflow file: <span className="font-mono">.github/workflows/cuecast.yml</span>. State is
