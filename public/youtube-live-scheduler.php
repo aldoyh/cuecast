@@ -55,9 +55,9 @@ function main(array $argv): int
     $parsed = parse_ics($ics);
     $state = ensure_quota(load_state($opt['state']), (int) $opt['quota_limit']);
     $token = $opt['dry_run'] ? null : resolve_token($opt);
-    if (!$opt['dry_run'] && $token === null && getenv('CUECAST_REQUIRE_YOUTUBE') === '1') {
-        fwrite(STDERR, "No YouTube credentials. Set GitHub Secrets YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN.\n");
-        return 3;
+    $missingCredentials = !$opt['dry_run'] && $token === null && getenv('CUECAST_REQUIRE_YOUTUBE') === '1';
+    if ($missingCredentials) {
+        warn_missing_credentials();
     }
 
     $now = time();
@@ -187,10 +187,26 @@ function main(array $argv): int
     ));
     if ($opt['dry_run']) {
         fwrite(STDOUT, "dry-run — no YouTube calls were made\n");
+    } elseif ($missingCredentials) {
+        fwrite(STDOUT, "no YouTube credentials — parsed only, nothing published.\n");
     } elseif ($token === null) {
         fwrite(STDOUT, "no YouTube token — parsed only. Pass --refresh-token or --access-token.\n");
     }
     return 0;
+}
+
+function warn_missing_credentials(): void
+{
+    $message = 'No YouTube credentials (YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN). '
+        . 'Falling back to parse-only — the calendar is still read and logged, but nothing is published to YouTube.';
+    fwrite(STDERR, "::warning::{$message}\n");
+    $summaryPath = getenv('GITHUB_STEP_SUMMARY');
+    if (is_string($summaryPath) && $summaryPath !== '') {
+        file_put_contents($summaryPath, "### ⚠️ Cuecast — no YouTube credentials\n\n"
+            . "The calendar was parsed, but nothing was published because `YOUTUBE_CLIENT_ID`, "
+            . "`YOUTUBE_CLIENT_SECRET`, and `YOUTUBE_REFRESH_TOKEN` are not set.\n\n"
+            . "Add them under **Settings → Secrets and variables → Actions** to enable live publishing.\n", FILE_APPEND);
+    }
 }
 
 function parse_args(array $argv): array
