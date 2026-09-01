@@ -37,6 +37,11 @@ Credentials never live in this repo. Add them at
 The **calendar URL is not a secret**. It comes from the Feed page, then
 `cuecast.config.json`, then `--ical`. GitHub Secrets never override that address.
 
+Until all three secrets are set, the workflow doesn't fail: it parses the
+calendar and logs what it *would* publish (a `dry`/`edit` row in
+`cuecast-ops.csv`), prints a `::warning::` annotation, and adds a note to the
+job summary — but nothing is actually inserted or updated on YouTube.
+
 `.github/workflows/cuecast.yml` maps only YouTube secrets into the environment:
 
 ```yaml
